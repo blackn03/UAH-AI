@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Circular Name Spinner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7fafc;
+      text-align: center;
+      padding: 40px;
+    }
+    .container {
+      display: inline-block;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px #aaa;
+    }
+    #wheelCanvas {
+      background: #fafafa;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ddd;
+      margin-bottom: 20px;
+    }
+    textarea, button {
+      font-size: 16px;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    #arrow {
+      font-size: 2.5em;
+      margin: 10px 0;
+      color: #f472b6;
+      user-select: none;
+    }
+    #winner {
+      margin-top: 30px;
+      font-size: 1.8em;
+      color: #3b82f6;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Circle Name Spinner</h1>
+    <textarea id="namesInput" rows="5" cols="30" placeholder="Alice&#10;Bob&#10;Charlie"></textarea><br>
+    <button id="spinBtn">Spin!</button>
+    <div id="arrow">▼</div>
+    <canvas id="wheelCanvas" width="340" height="340"></canvas>
+    <div id="winner"></div>
+  </div>
+  <script>
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spinBtn');
+    const namesInput = document.getElementById('namesInput');
+    const winnerDiv = document.getElementById('winner');
+
+    let names = [];
+    let startAngle = 0;
+    let arc = 0;
+    let spinAngle = 0;
+    let spinning = false;
+    let winnerIdx = null;
+
+    function drawWheel(namesArr, angleOffset=0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width/2;
+      const cy = canvas.height/2;
+      const r = 150;
+      const n = namesArr.length;
+      if (n === 0) return;
+
+      arc = 2 * Math.PI / n;
+      for (let i = 0; i < n; i++) {
+        // Pick a color
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.fillStyle = `hsl(${(i*360/n)}, 70%, 70%)`;
+        ctx.arc(cx, cy, r, angleOffset + i*arc, angleOffset + (i+1)*arc, false);
+        ctx.lineTo(cx, cy);
+        ctx.fill();
+        // Draw text
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angleOffset + i*arc + arc/2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#333";
+        ctx.font = "16px Arial";
+        ctx.fillText(namesArr[i], r-10, 8);
+        ctx.restore();
+      }
+    }
+
+    function spinWheel() {
+      if (spinning) return;
+      names = namesInput.value.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+      if (names.length < 2) {
+        winnerDiv.textContent = 'Please enter at least two names!';
+        return;
+      }
+      spinning = true;
+      winnerDiv.textContent = '';
+      // Pick winner
+      winnerIdx = Math.floor(Math.random() * names.length);
+      // Calculate random extra spins & stopping angle
+      let spins = 5 + Math.floor(Math.random()*3); // 5-7 spins
+      let finalAngle = 2 * Math.PI * spins + (Math.PI/2 - (winnerIdx + 0.5) * arc);
+      let duration = 4000;
+      let start = null;
+
+      function animateSpinner(ts) {
+        if (!start) start = ts;
+        let progress = ts - start;
+        // Ease out
+        let t = Math.min(progress / duration, 1);
+        let ease = 1 - Math.pow(1 - t, 4);
+        spinAngle = ease * finalAngle;
+        drawWheel(names, spinAngle);
+        if (t < 1) {
+          requestAnimationFrame(animateSpinner);
+        } else {
+          spinning = false;
+          drawWheel(names, spinAngle);
+          winnerDiv.textContent = `${names[winnerIdx]} 🎉`;
+        }
+      }
+      requestAnimationFrame(animateSpinner);
+    }
+
+    // Initial draw
+    names = ["Alice", "Bob", "Charlie"];
+    drawWheel(names);
+
+    namesInput.addEventListener('input', () => {
+      names = namesInput.value.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+      drawWheel(names, 0);
+      winnerDiv.textContent = '';
+    });
+
+    spinBtn.addEventListener('click', spinWheel);
+  </script>
+</body>
+</html>
